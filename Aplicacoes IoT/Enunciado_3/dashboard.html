@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard do Joystick - Completo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CSS RESET */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ESTILOS GERAIS */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2.2rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* CONTAINER PRINCIPAL */
+        .dashboard-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ROSA DOS VENTOS */
+        .compass-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            aspect-ratio: 1/1;
+            margin: 0 auto 30px;
+        }
+
+        #compass {
+            width: 100%;
+            height: 100%;
+        }
+
+        #arrow {
+            position: absolute;
+            width: 6px;
+            height: 120px;
+            background: linear-gradient(to bottom, #ff0000, #ff6b6b);
+            left: 50%;
+            top: 50%;
+            transform-origin: 50% 0;
+            z-index: 10;
+            border-radius: 3px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            transition: transform 0.2s ease-out, height 0.2s ease-out;
+        }
+
+        .compass-point {
+            position: absolute;
+            font-weight: bold;
+            font-size: 18px;
+            transform: translate(-50%, -50%);
+            text-shadow: 0 0 5px white;
+            z-index: 5;
+            user-select: none;
+        }
+
+        /* DISPLAY DE INFORMAÇÕES */
+        .data-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .data-card {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        }
+
+        .data-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .data-card p {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+
+
+        /* STATUS DO BOTÃO CENTRAL */
+        .button-status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .button-pressed {
+            background-color: #ff4444;
+            color: white;
+            box-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+        }
+
+        .button-released {
+            background-color: #4CAF50;
+            color: white;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+        }
+        
+        /* NOVO: Estilo para os botões A e B */
+        .extra-buttons-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 25px;
+            width: 100%;
+        }
+
+        .extra-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #4CAF50; /* Verde inicial */
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.8rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease-in-out;
+            border: 3px solid white;
+        }
+
+        .extra-button.pressed {
+            background-color: #e74c3c; /* Vermelho quando pressionado */
+        }
+
+        /* ANIMAÇÕES */
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+
+        .pulse {
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>Dashboard do Joystick</h1>
+        
+        <div class="compass-wrapper">
+            <canvas id="compass"></canvas>
+            <div id="arrow"></div>
+            
+            <!-- Pontos cardeais e colaterais -->
+            <div class="compass-point" style="top: 3%; left: 50%; color: #e74c3c;">N</div>
+            <div class="compass-point" style="top: 25%; right: 25%; color: #e67e22;">NE</div>
+            <div class="compass-point" style="top: 50%; right: 3%; color: #3498db;">L</div>
+            <div class="compass-point" style="bottom: 25%; right: 25%; color: #1abc9c;">SE</div>
+            <div class="compass-point" style="bottom: 3%; left: 50%; color: #e74c3c;">S</div>
+            <div class="compass-point" style="bottom: 25%; left: 25%; color: #9b59b6;">SO</div>
+            <div class="compass-point" style="top: 50%; left: 3%; color: #3498db;">O</div>
+            <div class="compass-point" style="top: 25%; left: 25%; color: #f1c40f;">NO</div>
+        </div>
+        
+        <div class="data-display">
+            <div class="data-card">
+                <h3>Direção</h3>
+                <p id="angle-display">0°</p>
+            </div>
+            <div class="data-card">
+                <h3>Intensidade</h3>
+                <p id="intensity-display">0%</p>
+            </div>
+
+            <div class="data-card">
+                <h3>Temperatura</h3>
+                <p id="temp-display">-- °C</p>
+            </div>
+
+            <div class="data-card">
+                <h3>Umidade</h3>
+                <p id="humi-display">-- %</p>
+            </div>
+        </div>
+
+        
+
+        <div id="button-status" class="button-status button-released">
+            BOTÃO JOYSTICK: SOLTO
+        </div>
+
+        <!-- NOVO: Container para os botões A e B -->
+        <div class="extra-buttons-container">
+            <div id="button-a" class="extra-button">A</div>
+            <div id="button-b" class="extra-button">B</div>
+        </div>
+    </div>
+
+    <script>
+        // --- ELEMENTOS DA INTERFACE ---
+        const arrow = document.getElementById('arrow');
+        const angleDisplay = document.getElementById('angle-display');
+        const intensityDisplay = document.getElementById('intensity-display');
+        const buttonStatus = document.getElementById('button-status');
+        const buttonA = document.getElementById('button-a');
+        const buttonB = document.getElementById('button-b');
+        const h1 = document.querySelector('h1');
+
+        const tempDisplay = document.getElementById('temp-display');
+        const humiDisplay = document.getElementById('humi-display');
+
+
+        // Cria o gráfico da rosa dos ventos (código original, sem alterações)
+        const ctx = document.getElementById('compass').getContext('2d');
+        const compassChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'], datasets: [{ data: [1, 1, 1, 1, 1, 1, 1, 1], backgroundColor: ['#e74c3c20', '#e67e2220', '#3498db20', '#1abc9c20', '#e74c3c20', '#9b59b620', '#3498db20', '#f1c40f20'], borderColor: ['#e74c3c', '#e67e22', '#3498db', '#1abc9c', '#e74c3c', '#9b59b6', '#3498db', '#f1c40f'], borderWidth: 1 }] }, options: { cutout: '75%', rotation: -45, plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { animateRotate: false }, responsive: true, maintainAspectRatio: false } });
+
+        // --- FUNÇÕES DE ATUALIZAÇÃO DA UI ---
+        function updateArrowPosition(angle, intensity) {
+            const degrees = ((angle * 180 / Math.PI) % 360).toFixed(1);
+            const percent = (intensity * 100).toFixed(0);
+            arrow.style.transform = `translateX(-50%) rotate(${angle}rad)`;
+            arrow.style.height = `${80 + (intensity * 70)}px`;
+            angleDisplay.textContent = `${degrees}°`;
+            intensityDisplay.textContent = `${percent}%`;
+            if (intensity > 0.1) { arrow.classList.add('pulse'); } else { arrow.classList.remove('pulse'); }
+        }
+
+        function updateButtonStatus(element, isPressed, textPrefix) {
+            if (isPressed) {
+                element.textContent = `${textPrefix}: PRESSIONADO`;
+                element.classList.remove('button-released');
+                element.classList.add('button-pressed');
+            } else {
+                element.textContent = `${textPrefix}: SOLTO`;
+                element.classList.remove('button-pressed');
+                element.classList.add('button-released');
+            }
+        }
+        
+        function updateExtraButtonStatus(element, isPressed) {
+             if (isPressed) {
+                element.classList.add('pressed');
+            } else {
+                element.classList.remove('pressed');
+            }
+        }
+
+        function processJoystickData(vrx, vry) {
+            const ADC_CENTER = 2048; 
+            const ADC_MAX_DEV = 2048;
+            const x_norm = (vrx - ADC_CENTER) / ADC_MAX_DEV;
+            const y_norm = -((vry - ADC_CENTER) / ADC_MAX_DEV);
+            const angle = Math.atan2(y_norm, x_norm) + Math.PI / 2;
+            const intensity = Math.min(Math.sqrt(x_norm * x_norm + y_norm * y_norm), 1.0);
+            return { angle, intensity };
+        }
+
+        // --- LÓGICA DO WEBSOCKET ---
+        function connectWebSocket() {
+            // Use o IP público do seu servidor Google Cloud
+            const socket = new WebSocket("ws://34.127.94.4:8083");
+
+            socket.onopen = function(e) {
+                h1.textContent = "Joystick Conectado";
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.status) {
+                        console.log("Status recebido:", data.status);
+                        return;
+                    }
+
+                    const { angle, intensity } = processJoystickData(data.VRX, data.VRY);
+                    updateArrowPosition(angle, intensity);
+                    
+                    updateButtonStatus(buttonStatus, (data.BTN === '1'), 'JOYSTICK');
+                    updateExtraButtonStatus(buttonA, (data.A === '1'));
+                    updateExtraButtonStatus(buttonB, (data.B === '1'));
+
+                    if (data.TEMP !== undefined) {
+                      tempDisplay.textContent = `${parseFloat(data.TEMP).toFixed(1)} °C`;
+                    }
+
+                    if (!isNaN(data.UMI)) {
+                      humiDisplay.textContent = `${parseFloat(data.UMI).toFixed(1)} %`;
+                    } else 
+                    {
+                      humiDisplay.textContent = '-- %';
+                    } 
+
+                } catch (error) {
+                    console.error("Erro ao processar mensagem:", error);
+                }
+            };
+
+            socket.onclose = function(event) {
+                h1.textContent = "Conexão Perdida...";
+                setTimeout(connectWebSocket, 3000); // Tenta reconectar
+            };
+
+            socket.onerror = function(error) {
+                h1.textContent = "Erro de Conexão";
+            };
+        }
+
+        // Inicia a conexão e o estado inicial da UI
+        connectWebSocket();
+        updateArrowPosition(0, 0);
+        updateButtonStatus(buttonStatus, false, 'JOYSTICK');
+        updateExtraButtonStatus(buttonA, false);
+        updateExtraButtonStatus(buttonB, false);
+    </script>
+</body>
+</html>
